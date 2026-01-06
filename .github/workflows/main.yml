@@ -1,0 +1,29 @@
+name: Update Artist Data
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # 매 시 정각마다 실행
+  workflow_dispatch:      # [Run workflow] 버튼을 만들어주는 마법의 문구!
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 가져오기
+        uses: actions/checkout@v3
+
+      - name: 파이썬 설치
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 필요한 라이브러리 설치
+        run: |
+          pip install requests
+
+      - name: 코드 실행
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python update_artist.py

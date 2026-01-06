@@ -100,8 +100,3 @@ def job():
 schedule.every(1).hours.do(job) 
 
 print("🚀 윤슬 자동 업데이트 엔진이 가동되었습니다. (1시간마다 체크 중...)")
-
-# 무한 루프로 스케줄러 실행
-while True:
-    schedule.run_pending() # 예약된 작업이 있는지 확인
-    time.sleep(1) 

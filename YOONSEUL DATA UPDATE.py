@@ -1,7 +1,8 @@
 import requests
 import json
 import time
-import schedule
+from datetime import datetime
+import pytz
 import os
 
 YT_API_KEY = os.environ.get("YT_API_KEY")
@@ -11,7 +12,8 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 headers = {
     "apikey": SUPABASE_KEY,
     "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json",
+    "Prefer": "return=minimal"
 }
 
 # 치지직용 '브라우저 변장' 헤더
@@ -22,11 +24,12 @@ CHZZK_HEADERS = {
 }
 
 def refresh_all_platforms():
-    print("🔄 [YOONSEUL] 통합 플랫폼 데이터 업데이트 시작...")
+    print(f"🔄 [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] YOONSEUL DATA UPDATE...")
 
     try:
-        # 1. DB에서 데이터 가져오기
-        list_url = f"{SUPABASE_URL}/rest/v1/ARTIST?select=name,youtube_id,chzzk_id,live_platform"
+        # 1. DB에서 아티스트 목록 가져오기
+        # select 문에 들어가는 컬럼명들은 본인의 Supabase 테이블과 일치해야 합니다.
+        list_url = f"{SUPABASE_URL}/rest/v1/ARTIST?select=name,youtube_id,live_id,live_platform"
         res = requests.get(list_url, headers=headers)
         
         if res.status_code != 200:
@@ -38,65 +41,89 @@ def refresh_all_platforms():
         for artist in artists:
             name = artist.get('name')
             yt_id = artist.get('youtube_id')
-            cz_id = artist.get('chzzk_id')
-            live_platform = artist.get('live_platform', '')
+            l_id = artist.get('live_id') 
+            l_platform = artist.get('live_platform', '')
 
             payload = {}
 
-            # YouTube UPDATE PART
+            # Youtube DATA UPDATE
             if yt_id:
-                yt_url = f"https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id={yt_id}&key={YT_API_KEY}"
-                yt_res = requests.get(yt_url).json()
-                items = yt_res.get('items', [])
-                if items:
-                    stats = items[0].get('statistics', {})
-                    snippet = items[0].get('snippet', {})
-                    payload["yt_subs"] = int(stats.get('subscriberCount', 0))
-                    payload["youtube_views"] = int(stats.get('viewCount', 0))
-                    payload["youtube_ch_name"] = snippet.get('title', '')
-
-            # Chzzk UPDATE PART
-            if cz_id and live_platform == "치지직":
                 try:
-                    cz_url = f"https://api.chzzk.naver.com/service/v1/channels/{cz_id}"
-                    # 치지직 전용 헤더 사용
-                    cz_res = requests.get(cz_url, headers=CHZZK_HEADERS)
-                    
-                    if cz_res.status_code == 200:
-                        content = cz_res.json().get('content', {})
-                        if content:
-                            payload["chzzk_followers"] = content.get('followerCount', 0)
-                            payload["chzzk_ch_name"] = content.get('channelName', '')
-                            payload["live"] = content.get('openLive', False)
-                    else:
-                        print(f"⚠️ {name}: 치지직 호출 실패 (상태코드: {cz_res.status_code})")
-                
-                except Exception as cz_err:
-                    print(f"❌ {name}: Disconnected to Chzzk API - {cz_err}")
+                    yt_url = f"https://www.googleapis.com/youtube/v3/channels?part=statistics,snippet&id={yt_id}&key={YT_API_KEY}"
+                    yt_res = requests.get(yt_url).json()
+                    items = yt_res.get('items', [])
+                    if items:
+                        stats = items[0].get('statistics', {})
+                        snippet = items[0].get('snippet', {})
+                        payload["yt_subs"] = int(stats.get('subscriberCount', 0))
+                        payload["youtube_views"] = int(stats.get('viewCount', 0))
+                        payload["youtube_ch_name"] = snippet.get('title', '')
+                except Exception as e:
+                    print(f"⚠️ {name}: YouTube Data Collect Error - {e}")
 
-            # DB UPDATE PART
+            # LIVE STRAMING DATA UPDATE - CHZZK (치지직)
+            if l_id and l_platform == "치지직":
+                try:
+                    # 1. 채널 기본 정보 (이름, 팔로워)
+                    cz_ch_url = f"https://api.chzzk.naver.com/service/v1/channels/{l_id}"
+                    cz_ch_res = requests.get(cz_ch_url, headers=CHZZK_HEADERS).json()
+                    ch_content = cz_ch_res.get('content', {})
+                    
+                    if ch_content:
+                        payload["live_ch_name"] = ch_content.get('channelName', '')
+                        payload["live_followers"] = ch_content.get('followerCount', 0)
+
+                    # 2. 실시간 라이브 정보 (상태, 시청자 수)
+                    cz_live_url = f"https://api.chzzk.naver.com/service/v2/channels/{l_id}/live-detail"
+                    cz_live_res = requests.get(cz_live_url, headers=CHZZK_HEADERS).json()
+                    live_content = cz_live_res.get('content', {})
+
+                    if live_content:
+                        live = live_content.get('status') == "OPEN"
+                        payload["live"] = live
+                        # 방송 중일 때만 시청자 수 기록, 아니면 0
+                        payload["viewer_count"] = live_content.get('concurrentUserCount', 0) if live else 0
+                    else:
+                        payload["live"] = False
+                        payload["viewer_count"] = 0
+
+                except Exception as cz_err:
+                    print(f"❌ {name}: Disconnect to Chzzk API - {cz_err}")
+
+            # DB UPATE
             if payload:
+                # 업데이트 완료한 한국 시간 추가
+                seoul_tz = pytz.timezone('Asia/Seoul')
+                payload["last_updated"] = datetime.now(seoul_tz).strftime('%Y-%m-%d %H:%M:%S')
+
                 update_url = f"{SUPABASE_URL}/rest/v1/ARTIST?name=eq.{name}"
                 patch_res = requests.patch(update_url, headers=headers, data=json.dumps(payload))
                 
                 if patch_res.status_code in [200, 204]:
-                    print(f"✅ {name}: 통합 업데이트 성공!")
+                    # .get(키, 기본값) 형식을 사용하면 데이터가 없어도 에러가 나지 않습니다.
+                    is_live = payload.get("live", False)
+                    status_icon = "🔴" if is_live else "⚪"
+                    
+                    # 모든 수치에 .get() 방어막 설치
+                    subs = payload.get('yt_subs', 0)
+                    yt_views = payload.get('youtube_views', 0)
+                    v_count = payload.get('viewer_count', 0)
+
+                    print(f"✅ {name} 업데이트 성공!")
+                    print(f"   └ [YouTube] 구독자: {subs:,}명 | 조회수: {yt_views:,}회")
+                    print(f"   └ [Live   ] 상태: {status_icon} | 시청자: {v_count:,}명")
+                    print("-" * 50)
                 else:
                     print(f"❌ {name}: DB 수정 실패 ({patch_res.status_code})")
+                    print(f"   └ 원인: {patch_res.text}")
+                    
             
-            # 아티스트 당 0.5초 대기
+            # API 과부하 방지를 위한 미세한 대기
             time.sleep(0.5)
 
     except Exception as e:
-        print(f"🔥 ERROR: {e}")
+        print(f"🔥 전체 프로세스 에러: {e}")
 
-refresh_all_platforms()
-
-def job():
-    print(f"\n⏰ [정기 업데이트 시작] {time.strftime('%Y-%m-%d %H:%M:%S')}")
+# 실행부
+if __name__ == "__main__":
     refresh_all_platforms()
-
-# 업데이트 스케줄 설정 
-schedule.every(1).hours.do(job) 
-
-print("🚀 윤슬 자동 업데이트 엔진이 가동되었습니다. (1시간마다 체크 중...)")

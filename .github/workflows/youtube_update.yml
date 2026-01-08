@@ -21,4 +21,4 @@ jobs:
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python "YOONSEUL DATA UPDATE.py"
+        run: python "yoonseul_youtube_data_update.py"

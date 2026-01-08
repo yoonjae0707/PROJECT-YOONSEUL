@@ -20,4 +20,4 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-        run: python live_status_update.py  # 라이브 전용 파이썬 파일
+        run: python yoonseul_live_data_update.py

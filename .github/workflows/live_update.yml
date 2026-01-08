@@ -1,0 +1,23 @@
+name: 10min Live Check
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # 10분마다
+  workflow_dispatch:        # 수동 실행 버튼 활성화
+
+jobs:
+  run-live-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install requests pytz
+      - name: Run Live Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python live_status_update.py  # 라이브 전용 파이썬 파일

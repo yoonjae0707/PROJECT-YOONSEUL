@@ -17,7 +17,7 @@ HEADERS = {
 CHZZK_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json",
-    "Referer": "https://chzzk.naver.com/;
+    "Referer": "https://chzzk.naver.com/
 }
 
 # 3. 데이터 가져올 URL 설정

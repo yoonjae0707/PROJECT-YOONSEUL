@@ -7,6 +7,7 @@ import pytz
 # 1. 환경 변수 읽어오기
 KEY = os.environ.get("SUPABASE_KEY")
 URL = os.environ.get("SUPABASE_URL")
+SOOP_ID = os.environ.get("SOOP_ID", "")
 
 # 2. HEADERS 정의
 HEADERS = {
@@ -26,6 +27,7 @@ GET_URL = f"{URL}/rest/v1/ARTIST?select=*"
 def run_live_update():
     response = requests.get(GET_URL, headers=HEADERS)
     artists = response.json()
+    soop_token = get_soop_token() if SOOP_ID else None
     
     # ... 나머지 로직 ...
     print(f"조회 성공: {len(artists)}명")

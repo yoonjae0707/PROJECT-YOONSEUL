@@ -4,20 +4,35 @@ import os
 from datetime import datetime
 import pytz
 
+# 1. 환경 변수 읽어오기
 KEY = os.environ.get("SUPABASE_KEY")
 URL = os.environ.get("SUPABASE_URL")
 
-headers = {
+# 2. HEADERS 정의
+HEADERS = {
     "apikey": KEY,
     "Authorization": f"Bearer {KEY}",
     "Content-Type": "application/json"
 }
-
 CHZZK_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "application/json",
-    "Referer": "https://chzzk.naver.com/"
+    "Referer": "https://chzzk.naver.com/;
 }
+
+# 3. 데이터 가져올 URL 설정
+GET_URL = f"{URL}/rest/v1/ARTIST?select=*"
+
+def run_live_update():
+    response = requests.get(GET_URL, headers=HEADERS)
+    artists = response.json()
+    
+    # ... 나머지 로직 ...
+    print(f"조회 성공: {len(artists)}명")
+
+# 4. 함수 실행
+if __name__ == "__main__":
+    run_live_update()
 
 # [기능 1] SOOP 토큰 가져오기 (API 문서 내용 반영)
 def get_soop_token():

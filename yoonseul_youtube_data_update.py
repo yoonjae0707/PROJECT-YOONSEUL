@@ -78,4 +78,7 @@ def update_youtube_data():
             time.sleep(0.3)
 
     except Exception as e:
-        print(
+        print(f"🔥 전체 프로세스 에러: {e}")
+
+if __name__ == "__main__":
+    update_youtube_data()

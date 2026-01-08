@@ -4,10 +4,10 @@ import os
 from datetime import datetime
 import pytz
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+KEY = os.environ.get("SUPABASE_KEY")
+URL = os.environ.get("SUPABASE_URL")
 
-HEADERS = {
+headers = {
     "apikey": KEY,
     "Authorization": f"Bearer {KEY}",
     "Content-Type": "application/json"
